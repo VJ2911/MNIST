@@ -1,0 +1,134 @@
+from pathlib import Path
+
+# Setup path to data folder
+data_path = Path(r"C:\Users\VARUN\Downloads")
+image_path = data_path / "archive"
+
+if image_path.is_dir():
+    print(f"{image_path} directory exists.")
+
+import os
+def walk_through_dir(dir_path):
+    for dirpath, dirnames, filenames in os.walk(dir_path):
+        print(f"There are {len(dirnames)} directories and {len(filenames)} images in '{dirpath}'.")
+
+walk_through_dir(image_path)
+
+train_dir = image_path / "trainingSet"
+test_dir = image_path / "testSet"
+
+train_dir, test_dir
+
+import random
+from PIL import Image
+
+random.seed(12) 
+
+image_path_list = list(train_dir.glob("*/*/*.jpg"))
+
+random_image_path = random.choice(image_path_list)
+
+image_class = random_image_path.parent.stem
+
+img = Image.open(random_image_path)
+
+print(f"Random image path: {random_image_path}")
+print(f"Image class: {image_class}")
+print(f"Image height: {img.height}") 
+print(f"Image width: {img.width}")
+img
+
+import torch
+from torch.utils.data import DataLoader
+import torch.nn as nn
+from torchvision import datasets, transforms
+import numpy as np
+
+transform = transforms.Compose([transforms.ToTensor()])
+
+train_dataset = datasets.ImageFolder(train_dir, transform=transform)
+test_dataset = datasets.ImageFolder(test_dir, transform=transform)
+
+len(train_dataset), len(test_dataset)
+
+img, label = train_dataset[0][0], train_dataset[0][1]
+print(f"Image tensor:\n{img}")
+print(f"Image shape: {img.shape}")
+print(f"Image datatype: {img.dtype}")
+print(f"Image label: {label}")
+print(f"Label datatype: {type(label)}")
+
+train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=10, shuffle=False)
+train_loader,test_loader
+
+img, label = next(iter(train_loader))
+print(f"Image shape: {img.shape} -> [batch_size, color_channels, height, width]")
+print(f"Label shape: {label.shape}")
+
+input_size=3*784
+hidden_size=100
+n_classes=10
+n_epochs=2
+batch_size=10
+learning_rate=0.001
+
+import torch.nn as nn
+class model_nn(nn.Module):
+    def __init__(self,input_size,hidden_size,n_classes):
+        super(model_nn,self).__init__()
+        self.l1 = nn.Linear(input_size,hidden_size)
+        self.relu = nn.ReLU()
+        self.l2 = nn.Linear(hidden_size,n_classes)
+    
+    def forward(self,x):
+        out= self.l1(x)
+        out= self.relu(out)
+        out= self.l2(out)
+        return out
+
+model=model_nn(input_size,hidden_size,n_classes)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
+
+n_steps=len(train_loader)
+
+for epoch in range(n_epochs):
+    for i,(img,label) in enumerate(train_loader):
+        images=img.reshape(-1,28*28*3)
+        labels=label
+        
+        outputs=model(images)
+        loss = criterion(outputs,labels)
+        
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        if(i+1)%100==0:
+            print(f'epoch {epoch+1}/{n_epochs},step {i+1}/{n_steps},loss={loss.item():.4f}')      
+
+with torch.no_grad():
+    n_correct =0
+    n_samples= 0
+    for images,labels in test_loader:
+        images=img.reshape(-1,28*28*3)
+        labels=label
+        outputs=model(images)
+        
+        _,predictions=torch.max(outputs,1)
+        n_samples+=labels.shape[0]
+        n_correct+=(predictions==labels).sum().item()
+
+acc=100.0*n_correct/n_samples
+print(f'accuracy={acc}')
+
+
+
+
+
+
+
+
+
